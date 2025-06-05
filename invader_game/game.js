@@ -81,24 +81,24 @@ class Game {
     }
     
     createEnemies() {
-        this.enemies = [
-            {
-                x: 350,
-                y: 200,
-                width: 30,
-                height: 30,
-                color: '#ff0000',
-                points: 30
-            },
-            {
-                x: 400,
-                y: 200,
-                width: 30,
-                height: 30,
-                color: '#00ff00',
-                points: 20
+        this.enemies = [];
+        const rows = 5;
+        const cols = 11;
+        const startX = 50;
+        const startY = 50;
+        const spacing = 40;
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                this.enemies.push({
+                    x: startX + col * spacing,
+                    y: startY + row * spacing,
+                    width: 30,
+                    height: 30,
+                    points: (rows - row) * 10
+                });
             }
-        ];
+        }
     }
     
     moveEnemies() {
@@ -244,28 +244,55 @@ class Game {
             });
         }
         
-        // 弾の移動・衝突判定・削除・描画を一つのforループで管理
-        const nextBullets = [];
-        for (let b = 0; b < this.bullets.length; b++) {
-            let bullet = this.bullets[b];
-            let hit = false;
+        // 弾の移動と衝突判定
+        const bulletsToRemove = new Set();
+        const enemiesToRemove = new Set();
+
+        // 1. 弾の移動
+        this.bullets.forEach(bullet => {
             bullet.y -= bullet.speed;
-            for (let e = 0; e < this.enemies.length; e++) {
-                if (this.checkCollision(bullet, this.enemies[e])) {
-                    this.score += this.enemies[e].points;
-                    this.updateScore();
-                    this.enemies.splice(e, 1);
-                    hit = true;
-                    break;
+        });
+
+        // 2. 衝突判定
+        this.bullets.forEach((bullet, bulletIndex) => {
+            this.enemies.forEach((enemy, enemyIndex) => {
+                if (this.checkCollision(bullet, enemy)) {
+                    bulletsToRemove.add(bulletIndex);
+                    enemiesToRemove.add(enemyIndex);
+                    this.score += enemy.points;
                 }
-            }
-            if (!hit && bullet.y > 0) {
+            });
+        });
+
+        // 3. 状態の更新
+        // 敵の削除（後ろから削除してインデックスのずれを防ぐ）
+        const sortedEnemyIndices = Array.from(enemiesToRemove).sort((a, b) => b - a);
+        sortedEnemyIndices.forEach(index => {
+            this.enemies.splice(index, 1);
+        });
+
+        // 弾の削除（後ろから削除してインデックスのずれを防ぐ）
+        const sortedBulletIndices = Array.from(bulletsToRemove).sort((a, b) => b - a);
+        sortedBulletIndices.forEach(index => {
+            this.bullets.splice(index, 1);
+        });
+
+        // スコアの更新
+        if (enemiesToRemove.size > 0) {
+            this.updateScore();
+        }
+
+        // 4. 描画
+        // 弾の描画
+        this.bullets.forEach(bullet => {
+            if (bullet.y > 0) {  // 画面内の弾のみ描画
                 this.ctx.fillStyle = '#0f0';
                 this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-                nextBullets.push(bullet);
             }
-        }
-        this.bullets = nextBullets;
+        });
+
+        // 画面外に出た弾の削除
+        this.bullets = this.bullets.filter(bullet => bullet.y > 0);
         
         // 敵の描画とプレイヤー衝突・画面下到達判定
         for (const enemy of this.enemies) {
