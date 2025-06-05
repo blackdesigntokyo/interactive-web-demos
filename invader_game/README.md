@@ -4,6 +4,9 @@
 
 ## 遊び方
 
+こちらのページにアクセスしてください。
+https://blackdesigntokyo.github.io/interactive-web-demos/invader_game/
+
 1. 「ゲーム開始」ボタンをクリックしてゲームを開始します
 2. 左右の矢印キーでプレイヤーを移動します
 3. スペースキーで弾を発射します
