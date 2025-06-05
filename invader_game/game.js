@@ -81,23 +81,24 @@ class Game {
     }
     
     createEnemies() {
-        const startX = 100;
-        const startY = 50;
-        const spacing = 50;
-        
-        for (let row = 0; row < this.enemyRows; row++) {
-            const enemyType = this.enemyTypes[Math.floor(row / 2)];
-            for (let col = 0; col < this.enemyCols; col++) {
-                this.enemies.push({
-                    x: startX + col * spacing,
-                    y: startY + row * spacing,
-                    width: enemyType.width,
-                    height: enemyType.height,
-                    color: enemyType.color,
-                    points: enemyType.points
-                });
+        this.enemies = [
+            {
+                x: 350,
+                y: 200,
+                width: 30,
+                height: 30,
+                color: '#ff0000',
+                points: 30
+            },
+            {
+                x: 400,
+                y: 200,
+                width: 30,
+                height: 30,
+                color: '#00ff00',
+                points: 20
             }
-        }
+        ];
     }
     
     moveEnemies() {
@@ -221,6 +222,7 @@ class Game {
     }
     
     update() {
+        console.log('update', performance.now());
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         // プレイヤーの移動
@@ -242,13 +244,56 @@ class Game {
             });
         }
         
-        // 弾の移動
-        this.bullets = this.bullets.filter(bullet => {
+        // 1. 弾の移動
+        this.bullets.forEach(bullet => {
             bullet.y -= bullet.speed;
+        });
+
+        // 2. 弾と敵の衝突判定（最初に当たったペアのみ記録）
+        let hitBulletIndex = null;
+        let hitEnemyIndex = null;
+        for (let b = 0; b < this.bullets.length; b++) {
+            for (let e = 0; e < this.enemies.length; e++) {
+                if (this.checkCollision(this.bullets[b], this.enemies[e])) {
+                    hitBulletIndex = b;
+                    hitEnemyIndex = e;
+                    break;
+                }
+            }
+            if (hitBulletIndex !== null) break;
+        }
+        // 3. 衝突した弾・敵を削除
+        if (hitBulletIndex !== null && hitEnemyIndex !== null) {
+            this.score += this.enemies[hitEnemyIndex].points;
+            this.updateScore();
+            this.bullets.splice(hitBulletIndex, 1);
+            this.enemies.splice(hitEnemyIndex, 1);
+        }
+        // 4. 残りの弾を描画
+        this.bullets = this.bullets.filter(bullet => {
             this.ctx.fillStyle = '#0f0';
             this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
             return bullet.y > 0;
         });
+        
+        // 敵の描画とプレイヤー衝突・画面下到達判定
+        for (const enemy of this.enemies) {
+            this.drawEnemy(enemy);
+            if (this.checkCollision(enemy, this.player)) {
+                this.lives--;
+                this.updateLives();
+                if (this.lives <= 0) {
+                    this.gameOver();
+                }
+                this.enemies = this.enemies.filter(e => e !== enemy);
+                break;
+            }
+            if (enemy.y + enemy.height >= this.canvas.height) {
+                this.gameOver();
+                this.enemies = [];
+                break;
+            }
+        }
         
         // 敵の弾の移動
         this.enemyBullets = this.enemyBullets.filter(bullet => {
@@ -271,41 +316,6 @@ class Game {
                     }
                 }
             }
-        });
-        
-        // 敵の描画と衝突判定
-        this.enemies = this.enemies.filter(enemy => {
-            this.drawEnemy(enemy);
-            
-            // 敵と弾の衝突判定
-            const bulletHit = this.bullets.some(bullet => {
-                if (this.checkCollision(bullet, enemy)) {
-                    this.score += enemy.points;
-                    this.updateScore();
-                    return true;
-                }
-                return false;
-            });
-            
-            if (bulletHit) return false;
-            
-            // 敵とプレイヤーの衝突判定
-            if (this.checkCollision(enemy, this.player)) {
-                this.lives--;
-                this.updateLives();
-                if (this.lives <= 0) {
-                    this.gameOver();
-                }
-                return false;
-            }
-            
-            // 敵が画面下に到達
-            if (enemy.y + enemy.height >= this.canvas.height) {
-                this.gameOver();
-                return false;
-            }
-            
-            return true;
         });
         
         // シールドと弾の衝突判定
