@@ -244,37 +244,28 @@ class Game {
             });
         }
         
-        // 1. 弾の移動
-        this.bullets.forEach(bullet => {
-            bullet.y -= bullet.speed;
-        });
-
-        // 2. 弾と敵の衝突判定（最初に当たったペアのみ記録）
-        let hitBulletIndex = null;
-        let hitEnemyIndex = null;
+        // 弾の移動・衝突判定・削除・描画を一つのforループで管理
+        const nextBullets = [];
         for (let b = 0; b < this.bullets.length; b++) {
+            let bullet = this.bullets[b];
+            let hit = false;
+            bullet.y -= bullet.speed;
             for (let e = 0; e < this.enemies.length; e++) {
-                if (this.checkCollision(this.bullets[b], this.enemies[e])) {
-                    hitBulletIndex = b;
-                    hitEnemyIndex = e;
+                if (this.checkCollision(bullet, this.enemies[e])) {
+                    this.score += this.enemies[e].points;
+                    this.updateScore();
+                    this.enemies.splice(e, 1);
+                    hit = true;
                     break;
                 }
             }
-            if (hitBulletIndex !== null) break;
+            if (!hit && bullet.y > 0) {
+                this.ctx.fillStyle = '#0f0';
+                this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                nextBullets.push(bullet);
+            }
         }
-        // 3. 衝突した弾・敵を削除
-        if (hitBulletIndex !== null && hitEnemyIndex !== null) {
-            this.score += this.enemies[hitEnemyIndex].points;
-            this.updateScore();
-            this.bullets.splice(hitBulletIndex, 1);
-            this.enemies.splice(hitEnemyIndex, 1);
-        }
-        // 4. 残りの弾を描画
-        this.bullets = this.bullets.filter(bullet => {
-            this.ctx.fillStyle = '#0f0';
-            this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
-            return bullet.y > 0;
-        });
+        this.bullets = nextBullets;
         
         // 敵の描画とプレイヤー衝突・画面下到達判定
         for (const enemy of this.enemies) {
